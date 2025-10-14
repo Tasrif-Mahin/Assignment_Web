@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  /* Your Exact 6 Brand Colors Only */
+  --color-navy-1: #1a1f3a;    /* Darkest Navy */
+  --color-navy-2: #2c3654;    /* Dark Navy */
+  --color-navy-3: #3f4d6f;    /* Medium Navy */
+  --color-blue-4: #7b9dd4;    /* Light Blue */
+  --color-blue-5: #b8d4f1;    /* Sky Blue */
+  --color-white-6: #e8eef5;   /* Off-White */
+  
+  /* Pure White for Buttons */
+  --color-white: #FFFFFF;
+  
+  /* Minimal Utility (Only for validation/status) */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--color-white-6);
+  color: var(--color-navy-1);
+}
