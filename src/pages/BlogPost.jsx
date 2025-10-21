@@ -1,95 +1,147 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { getBlogBySlug, getPublicBlogs } from '../apiService';
 
 const BlogPost = () => {
   const { id } = useParams();
+  const [post, setPost] = useState(null);
+  const [relatedPosts, setRelatedPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Dummy blog post data
-  const post = {
-    title: "Why Online Classes Feel Harder – And How Expert Help Can Fix It",
-    category: "Assignment",
-    date: "15 Oct 2025",
-    author: "SubmitSure Team",
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200",
-    content: `
-      <p>You sign into your online class, ready to pay attention, but then a few moments later, your phone buzzes, notifications appear, and the lecture seems a million miles away.</p>
+  useEffect(() => {
+    fetchBlogPost();
+  }, [id]);
+
+  const fetchBlogPost = async () => {
+    try {
+      setLoading(true);
       
-      <p>The modern student faces unprecedented challenges with online learning. While technology has made education more accessible, it has also introduced new obstacles that traditional classroom settings never had.</p>
+      // Try to fetch by slug first, then by ID
+      let response;
+      try {
+        response = await getBlogBySlug(id);
+      } catch {
+        // If slug fails, try fetching all blogs and find by ID
+        const allBlogs = await getPublicBlogs();
+        const foundPost = allBlogs.data.find(blog => blog._id === id);
+        if (foundPost) {
+          response = { data: foundPost };
+        } else {
+          throw new Error('Blog not found');
+        }
+      }
 
-      <h2>The Psychology Behind Online Learning Difficulties</h2>
-      <p>Research shows that our brains process information differently when we're learning through a screen compared to in-person instruction. The lack of physical presence, reduced social interaction, and increased distractions all contribute to making online classes feel harder.</p>
+      setPost(response.data);
 
-      <h2>Common Challenges Students Face</h2>
-      <ul>
-        <li>Lack of face-to-face interaction with instructors and peers</li>
-        <li>Technical difficulties and connectivity issues</li>
-        <li>Difficulty maintaining focus and motivation</li>
-        <li>Time management struggles with flexible schedules</li>
-        <li>Feeling isolated and disconnected from the learning community</li>
-      </ul>
-
-      <h2>How Expert Help Can Make a Difference</h2>
-      <p>Professional academic assistance isn't about taking shortcuts—it's about getting the support you need to succeed in a challenging learning environment. Expert tutors and writing services can provide:</p>
-
-      <ul>
-        <li>Personalized guidance tailored to your learning style</li>
-        <li>Help understanding complex concepts at your own pace</li>
-        <li>Support with assignments and research papers</li>
-        <li>Feedback and editing to improve your work</li>
-        <li>Time management strategies to balance multiple responsibilities</li>
-      </ul>
-
-      <p>At SubmitSure, we understand the unique challenges of online learning. Our team of PhD experts is here to help you navigate your academic journey with confidence.</p>
-    `
+      // Fetch related posts (same category)
+      const allBlogs = await getPublicBlogs();
+      const related = allBlogs.data
+        .filter(blog => 
+          blog._id !== response.data._id && 
+          blog.category === response.data.category &&
+          blog.status === 'Published'
+        )
+        .slice(0, 2);
+      
+      setRelatedPosts(related);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to fetch blog post:', err);
+      setError('Blog post not found');
+      setLoading(false);
+    }
   };
 
-  const relatedPosts = [
-    {
-      id: 2,
-      title: "Affordable vs Premium Online Class Help",
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400"
-    },
-    {
-      id: 3,
-      title: "100+ Military Research Paper Topics",
-      image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400"
-    }
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-4 mx-auto"></div>
+          <p className="mt-4 text-navy-3 text-lg">Loading blog post...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !post) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-blue-50">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-navy-1 mb-4">Blog Post Not Found</h2>
+          <p className="text-navy-3 mb-6">{error}</p>
+          <Link to="/blog" className="inline-block px-6 py-3 bg-blue-4 text-white rounded-lg hover:bg-blue-5 transition">
+            ← Back to Blog
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white">
       {/* Hero Image */}
       <div className="relative h-[400px] overflow-hidden">
         <img 
-          src={post.image} 
+          src={post.featuredImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200'} 
           alt={post.title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <div className="absolute bottom-0 left-0 right-0 max-w-4xl mx-auto px-4 pb-10">
-          <span className="inline-block bg-blue-4 px-4 py-1 rounded-full text-sm font-semibold text-white mb-4">
-            {post.category}
-          </span>
+          {post.category && (
+            <span className="inline-block bg-blue-4 px-4 py-1 rounded-full text-sm font-semibold text-white mb-4">
+              {post.category}
+            </span>
+          )}
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
             {post.title}
           </h1>
           <div className="flex items-center gap-4 text-white/90 text-sm">
-            <span>{post.author}</span>
+            <span>{post.author || 'SubmitSure Team'}</span>
             <span>•</span>
-            <span>{post.date}</span>
+            <span>
+              {new Date(post.createdAt).toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-16">
+        {/* Excerpt */}
+        {post.excerpt && (
+          <div className="text-xl text-navy-3 mb-8 italic border-l-4 border-blue-4 pl-6">
+            {post.excerpt}
+          </div>
+        )}
+
+        {/* Main Content */}
         <div 
-          className="prose prose-lg prose-navy max-w-none"
+          className="prose prose-lg prose-navy max-w-none blog-content"
           dangerouslySetInnerHTML={{ __html: post.content }}
-          style={{
-            color: '#2c3654',
-            lineHeight: '1.8'
-          }}
         />
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-navy-3/10">
+            <h3 className="text-sm font-semibold text-navy-3 mb-3">Tags:</h3>
+            <div className="flex flex-wrap gap-2">
+              {post.tags.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tools Section */}
         <div className="grid md:grid-cols-3 gap-6 mt-12 p-8 bg-gradient-to-br from-blue-5/10 to-white-6 rounded-2xl">
@@ -129,30 +181,85 @@ const BlogPost = () => {
         </div>
 
         {/* Related Posts */}
-        <div className="mt-16">
-          <h3 className="text-2xl font-bold text-navy-1 mb-6">Related Articles</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            {relatedPosts.map((related) => (
-              <Link 
-                key={related.id}
-                to={`/blog/${related.id}`}
-                className="group flex gap-4 bg-gradient-to-br from-white-6 to-white rounded-xl overflow-hidden border-2 border-navy-3/10 hover:border-blue-4 hover:shadow-xl transition-all"
-              >
-                <img 
-                  src={related.image} 
-                  alt={related.title}
-                  className="w-32 h-32 object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-                <div className="p-4 flex items-center">
-                  <h4 className="font-bold text-navy-1 group-hover:text-blue-4 transition">
-                    {related.title}
-                  </h4>
-                </div>
-              </Link>
-            ))}
+        {relatedPosts.length > 0 && (
+          <div className="mt-16">
+            <h3 className="text-2xl font-bold text-navy-1 mb-6">Related Articles</h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              {relatedPosts.map((related) => (
+                <Link 
+                  key={related._id}
+                  to={`/blog/${related.slug || related._id}`}
+                  className="group flex gap-4 bg-gradient-to-br from-white-6 to-white rounded-xl overflow-hidden border-2 border-navy-3/10 hover:border-blue-4 hover:shadow-xl transition-all"
+                >
+                  <img 
+                    src={related.featuredImage || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400'} 
+                    alt={related.title}
+                    className="w-32 h-32 object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="p-4 flex items-center">
+                    <h4 className="font-bold text-navy-1 group-hover:text-blue-4 transition line-clamp-3">
+                      {related.title}
+                    </h4>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* Back to Blog */}
+        <div className="mt-12 text-center">
+          <Link 
+            to="/blog" 
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-4 to-blue-5 text-white rounded-lg hover:shadow-xl transition font-semibold"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to All Blogs
+          </Link>
         </div>
       </div>
+
+      <style jsx>{`
+        .blog-content {
+          color: #2c3654;
+          line-height: 1.8;
+        }
+        .blog-content h2 {
+          font-size: 1.875rem;
+          font-weight: 700;
+          color: #2c3654;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        .blog-content h3 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #2c3654;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        .blog-content p {
+          margin-bottom: 1rem;
+        }
+        .blog-content ul, .blog-content ol {
+          margin-left: 1.5rem;
+          margin-bottom: 1rem;
+        }
+        .blog-content li {
+          margin-bottom: 0.5rem;
+        }
+        .blog-content a {
+          color: #3b82f6;
+          text-decoration: underline;
+        }
+        .blog-content img {
+          max-width: 100%;
+          border-radius: 0.5rem;
+          margin: 1.5rem 0;
+        }
+      `}</style>
     </div>
   );
 };
